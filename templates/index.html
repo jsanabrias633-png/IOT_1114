@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor IoT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Lectura de Sensor IoT</h1>
+    <p>Temperatura: {{ data.temperature }} °C</p>
+    <p>Humedad: {{ data.humidity }} %</p>
+</body>
+</html>
