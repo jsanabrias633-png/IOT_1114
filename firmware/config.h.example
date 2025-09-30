@@ -1,0 +1,14 @@
+#pragma once
+
+// Copy this file to config.h and update it with your Wi-Fi and API details.
+// Keep the real credentials out of source control.
+#define WIFI_SSID "Wokwi-GUEST"
+#define WIFI_PASSWORD ""
+
+// Backend endpoint (default Flask server on the same machine).
+#define API_BASE_URL "http://host.docker.internal:5000"
+#define API_UPDATE_PATH "/update"
+#define API_HEALTH_PATH "/health"
+
+// How often the ESP32 should send sensor data.
+#define POST_INTERVAL_SECONDS 5

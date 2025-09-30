@@ -6,8 +6,131 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Lectura de Sensor IoT</h1>
-    <p>Temperatura: {{ data.temperature }} °C</p>
-    <p>Humedad: {{ data.humidity }} %</p>
+    <header class="status-bar">
+        <div class="status-bar__group">
+            <span class="status-dot status-dot--{{ status }}" id="status-dot" aria-hidden="true"></span>
+            <span class="status-text" id="status-text">{{ status|capitalize }}</span>
+        </div>
+        <div class="status-bar__group">
+            <span class="status-label">Ultima actualizacion:</span>
+            <time class="status-value" id="last-update" datetime="{{ last_update if last_update else '' }}">
+                {{ last_update if last_update else 'Sin datos' }}
+            </time>
+        </div>
+        <label class="status-bar__group refresh-toggle">
+            <input type="checkbox" id="auto-refresh" checked>
+            <span>Auto refresco</span>
+        </label>
+    </header>
+
+    <main>
+        <h1>Lectura de Sensor IoT</h1>
+        <section class="sensor-card" aria-live="polite">
+            <h2>Sensor de Ambiente</h2>
+            <p class="sensor-reading">
+                <span class="sensor-label">Temperatura</span>
+                <strong class="sensor-value" id="temperature-value">
+                    {% if data.temperature is not none %}{{ data.temperature }}&deg;C{% else %}--&deg;C{% endif %}
+                </strong>
+            </p>
+            <p class="sensor-reading">
+                <span class="sensor-label">Humedad</span>
+                <strong class="sensor-value" id="humidity-value">
+                    {% if data.humidity is not none %}{{ data.humidity }} %{% else %}-- %{% endif %}
+                </strong>
+            </p>
+            <p class="sensor-hint" id="sensor-hint">Esperando datos del microcontrolador...</p>
+        </section>
+    </main>
+
+    <script>
+        const initialState = {
+            status: {{ status|tojson }},
+            data: {{ data|tojson }},
+            lastUpdate: {{ last_update|tojson }}
+        };
+
+        const refreshSeconds = Math.max({{ refresh_seconds|tojson }}, 1);
+        const refreshIntervalMs = refreshSeconds * 1000;
+
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const lastUpdateEl = document.getElementById('last-update');
+        const temperatureEl = document.getElementById('temperature-value');
+        const humidityEl = document.getElementById('humidity-value');
+        const sensorHintEl = document.getElementById('sensor-hint');
+        const autoRefreshToggle = document.getElementById('auto-refresh');
+
+        const formatTimestamp = (isoString) => {
+            if (!isoString) {
+                return 'Sin datos';
+            }
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleString();
+            } catch (error) {
+                console.error('No se pudo formatear la fecha:', error);
+                return isoString;
+            }
+        };
+
+        const applyStatusStyles = (status) => {
+            const safeStatus = status || 'offline';
+            statusDot.className = `status-dot status-dot--${safeStatus}`;
+            statusText.textContent = safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1);
+        };
+
+        const updateSensorCard = (data, status, lastUpdate) => {
+            const hasTemperature = data && data.temperature !== null && data.temperature !== undefined;
+            const hasHumidity = data && data.humidity !== null && data.humidity !== undefined;
+
+            temperatureEl.textContent = hasTemperature ? `${data.temperature}\u00B0C` : '--\u00B0C';
+            humidityEl.textContent = hasHumidity ? `${data.humidity} %` : '-- %';
+
+            if (status === 'connected' && (hasTemperature || hasHumidity)) {
+                sensorHintEl.textContent = 'Datos actualizados correctamente.';
+            } else if (status === 'stale') {
+                sensorHintEl.textContent = 'Sin datos nuevos recientemente. Verifica la conexion.';
+            } else {
+                sensorHintEl.textContent = 'Esperando datos del microcontrolador...';
+            }
+
+            lastUpdateEl.textContent = formatTimestamp(lastUpdate);
+            lastUpdateEl.dateTime = lastUpdate || '';
+        };
+
+        const refreshFromHealth = async () => {
+            try {
+                const response = await fetch('/health');
+                if (!response.ok) {
+                    throw new Error(`Estado HTTP ${response.status}`);
+                }
+                const payload = await response.json();
+                applyStatusStyles(payload.status);
+                updateSensorCard(payload.data || {}, payload.status, payload.last_update || null);
+            } catch (error) {
+                console.error('No se pudo obtener el estado de salud:', error);
+                applyStatusStyles('offline');
+                updateSensorCard({}, 'offline', null);
+            }
+        };
+
+        // Mantiene el tablero sincronizado con el backend.
+        let refreshIntervalId = setInterval(refreshFromHealth, refreshIntervalMs);
+
+        autoRefreshToggle.addEventListener('change', (event) => {
+            if (event.target.checked) {
+                refreshFromHealth();
+                refreshIntervalId = setInterval(refreshFromHealth, refreshIntervalMs);
+            } else {
+                clearInterval(refreshIntervalId);
+                refreshIntervalId = null;
+            }
+        });
+
+        applyStatusStyles(initialState.status);
+        updateSensorCard(initialState.data || {}, initialState.status, initialState.lastUpdate);
+        refreshFromHealth();
+    </script>
 </body>
 </html>
