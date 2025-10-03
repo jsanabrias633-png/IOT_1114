@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -7,7 +8,13 @@ from flask import Flask, request, render_template, jsonify
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 app = Flask(__name__)
+logger = logging.getLogger(__name__)
 
 
 def _safe_int(value: Optional[str], fallback: int) -> int:
@@ -61,10 +68,40 @@ def update():
     global last_update_at
 
     content = request.get_json()
-    if content:
-        sensor_data["temperature"] = content.get("temperature")
-        sensor_data["humidity"] = content.get("humidity")
-        last_update_at = datetime.now(timezone.utc)
+
+    # Validate request has JSON content
+    if not content:
+        logger.warning("Received update request with no JSON body")
+        return jsonify({"error": "Missing JSON body"}), 400
+
+    # Validate required fields exist
+    if "temperature" not in content or "humidity" not in content:
+        logger.warning(f"Missing required fields in update: {content}")
+        return jsonify({"error": "Missing required fields: temperature and humidity"}), 400
+
+    # Validate and convert data types
+    try:
+        temp = float(content["temperature"])
+        hum = float(content["humidity"])
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid data types in update: {content} - {e}")
+        return jsonify({"error": "Invalid data types, expected numbers"}), 400
+
+    # Validate sensor ranges (typical for DHT11/DHT22 sensors)
+    if not (-40 <= temp <= 85):
+        logger.warning(f"Temperature out of range: {temp}")
+        return jsonify({"error": "Temperature out of valid range (-40 to 85°C)"}), 400
+
+    if not (0 <= hum <= 100):
+        logger.warning(f"Humidity out of range: {hum}")
+        return jsonify({"error": "Humidity out of valid range (0 to 100%)"}), 400
+
+    # Update sensor data
+    sensor_data["temperature"] = temp
+    sensor_data["humidity"] = hum
+    last_update_at = datetime.now(timezone.utc)
+
+    logger.info(f"Sensor data updated: temp={temp}°C, humidity={hum}%")
 
     return jsonify(
         {
@@ -105,4 +142,6 @@ def health():
 
 
 if __name__ == "__main__":
+    logger.info(f"Starting Flask IoT server on {HOST}:{PORT} (debug={DEBUG_MODE})")
+    logger.info(f"Dashboard refresh interval: {REFRESH_SECONDS} seconds")
     app.run(host=HOST, port=PORT, debug=DEBUG_MODE)

@@ -1,46 +1,239 @@
 # Demo Flask IoT
 
-Pequeño proyecto educativo para monitorear un sensor simulado (ESP32 en Wokwi) desde un panel Flask. Incluye un endpoint de salud y una cabecera de estado que muestran claramente si la conexión está activa y cuándo llegó el último dato.
+PequeÃ±o proyecto educativo para monitorear un sensor simulado (ESP32 en Wokwi) desde un panel Flask. Incluye un endpoint de salud y una cabecera de estado que muestran claramente si la conexiÃ³n estÃ¡ activa y cuÃ¡ndo llegÃ³ el Ãºltimo dato.
+
+## CaracterÃ­sticas
+
+- âœ… **ValidaciÃ³n robusta de datos**: Verifica rangos y tipos de datos de sensores
+- âœ… **Logging completo**: Registra todas las operaciones y errores
+- âœ… **Estados de conexiÃ³n**: Connected, Stale y Offline basados en timestamps
+- âœ… **Dashboard en tiempo real**: Auto-refresh cada 5 segundos
+- âœ… **API REST completa**: Endpoints para datos, salud y actualizaciones
 
 ## Flujo de datos
-- El firmware del ESP32 mide temperatura y humedad y envía un POST con JSON al endpoint `/update` del servidor Flask.
-- El backend guarda el último paquete en memoria, registra la hora de llegada y expone `/health` con la información de conexión.
-- El dashboard consulta `/health` de forma periódica para actualizar el badge de estado, la marca de tiempo y los valores mostrados.
 
-## Requisitos
-- Python 3.10+ instalado localmente.
-- Acceso a internet solo para instalar dependencias (el servidor no necesita conexión externa).
-- Cuenta gratuita en [https://wokwi.com](https://wokwi.com) si deseas probar el firmware simulado.
+- El firmware del ESP32 mide temperatura y humedad y envÃ­a un POST con JSON al endpoint `/update` del servidor Flask.
+- El backend valida los datos, guarda el Ãºltimo paquete en memoria, registra la hora de llegada y expone `/health` con la informaciÃ³n de conexiÃ³n.
+- El dashboard consulta `/health` de forma periÃ³dica para actualizar el badge de estado, la marca de tiempo y los valores mostrados.
 
-## Configuración rápida
-1. Clona el repositorio y entra en la carpeta del proyecto.
-2. (Opcional) Crea un entorno virtual: `python -m venv .venv` y actívalo.
-3. Instala dependencias: `pip install -r requirements.txt`.
-4. Copia `.env.example` a `.env` y ajusta las opciones si quieres cambiar host, puerto o intervalo de refresco.
-5. Ejecuta el servidor: `python app.py` (carga automática de `.env`).
-6. Abre `http://localhost:5000` en el navegador; verás el panel con el badge de conexión.
+## Requisitos previos
 
-## Prueba rápida sin hardware
-1. Arranca el servidor como se indicó arriba.
-2. En otra terminal, envía un dato de prueba:  
-   `curl -X POST http://localhost:5000/update -H "Content-Type: application/json" -d '{"temperature": 23.4, "humidity": 55}'`
-3. La cabecera debe cambiar a verde (Connected) y mostrar la hora actualizada.
-4. Comprueba `/health`: `curl http://localhost:5000/health` para ver el JSON con estado, último update y uptime.
+- **Python 3.10+** instalado localmente
+- **pip** (gestor de paquetes de Python)
+- Acceso a internet solo para instalar dependencias (el servidor no necesita conexiÃ³n externa)
+- Cuenta gratuita en [https://wokwi.com](https://wokwi.com) si deseas probar el firmware simulado
+
+## InstalaciÃ³n paso a paso
+
+### 1. Clonar el repositorio
+
+```bash
+git clone <url-del-repositorio>
+cd Flask-iot-demo
+```
+
+### 2. Crear entorno virtual (recomendado)
+
+**En Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+**En Windows (CMD):**
+```cmd
+python -m venv .venv
+.venv\Scripts\activate.bat
+```
+
+**En Linux/macOS:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Instalar dependencias
+
+```bash
+pip install -r requirements.txt
+```
+
+Esto instalarÃ¡:
+- Flask 3.0.0
+- python-dotenv 1.1.1
+
+### 4. Configurar variables de entorno
+
+Copia el archivo de ejemplo y ajusta si es necesario:
+
+```bash
+cp .env.example .env
+```
+
+**Contenido del archivo `.env`:**
+```env
+FLASK_HOST=0.0.0.0
+FLASK_PORT=5000
+FLASK_DEBUG=true
+STATUS_REFRESH_SECONDS=5
+```
+
+### 5. Iniciar el servidor
+
+```bash
+python app.py
+```
+
+DeberÃ­as ver en la consola:
+```
+2025-10-03 11:21:05,372 - __main__ - INFO - Starting Flask IoT server on 0.0.0.0:5000 (debug=True)
+2025-10-03 11:21:05,373 - __main__ - INFO - Dashboard refresh interval: 5 seconds
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.7:5000
+```
+
+### 6. Acceder al dashboard
+
+Abre tu navegador y visita: **http://localhost:5000**
+
+VerÃ¡s el panel con:
+- Badge de estado (rojo/Offline al inicio)
+- Ãšltima actualizaciÃ³n
+- Toggle de auto-refresh
+- Valores de temperatura y humedad
+
+## Prueba rÃ¡pida sin hardware
+
+### OpciÃ³n 1: PowerShell (Windows)
+
+```powershell
+# Enviar datos vÃ¡lidos
+$body = '{"temperature": 23.5, "humidity": 60}'
+Invoke-RestMethod -Uri "http://localhost:5000/update" -Method POST -ContentType "application/json" -Body $body
+```
+
+### OpciÃ³n 2: Bash/curl (Linux/macOS/Git Bash)
+
+```bash
+curl -X POST http://localhost:5000/update \
+  -H "Content-Type: application/json" \
+  -d '{"temperature": 23.4, "humidity": 55}'
+```
+
+### OpciÃ³n 3: Script de pruebas automatizado
+
+```bash
+python test_validation.py
+```
+
+Este script ejecuta 13 casos de prueba incluyendo:
+- âœ… Datos vÃ¡lidos
+- âŒ Datos fuera de rango
+- âŒ Tipos de datos incorrectos
+- âŒ Campos faltantes
+- âœ… Casos lÃ­mite (edge cases)
+
+### Resultados esperados
+
+DespuÃ©s de enviar datos vÃ¡lidos:
+1. El badge cambia a **verde (Connected)**
+2. La marca de tiempo se actualiza
+3. Los valores de temperatura y humedad se muestran
+4. Los logs muestran: `INFO - Sensor data updated: temp=23.5Â°C, humidity=60%`
+
+## API Endpoints
+
+### `GET /`
+Renderiza el dashboard HTML principal.
+
+### `POST /update`
+Recibe datos del sensor ESP32.
+
+**Body (JSON):**
+```json
+{
+  "temperature": 23.5,
+  "humidity": 60
+}
+```
+
+**Validaciones:**
+- Temperatura: -40Â°C a 85Â°C
+- Humedad: 0% a 100%
+- Ambos campos requeridos
+- Valores numÃ©ricos
+
+**Respuesta exitosa (200):**
+```json
+{
+  "status": "success",
+  "connection": "connected",
+  "data": {
+    "temperature": 23.5,
+    "humidity": 60
+  },
+  "last_update": "2025-10-03T16:21:05.123456+00:00"
+}
+```
+
+**Respuesta error (400):**
+```json
+{
+  "error": "Temperature out of valid range (-40 to 85Â°C)"
+}
+```
+
+### `GET /data`
+Obtiene las Ãºltimas lecturas del sensor.
+
+**Respuesta:**
+```json
+{
+  "data": {
+    "temperature": 23.5,
+    "humidity": 60
+  },
+  "last_update": "2025-10-03T16:21:05.123456+00:00",
+  "connection": "connected"
+}
+```
+
+### `GET /health`
+Endpoint de monitoreo con informaciÃ³n detallada.
+
+**Respuesta:**
+```json
+{
+  "status": "connected",
+  "data": {
+    "temperature": 23.5,
+    "humidity": 60
+  },
+  "last_update": "2025-10-03T16:21:05.123456+00:00",
+  "seconds_since_update": 2.5,
+  "uptime_seconds": 120.8
+}
+```
+
+**Estados posibles:**
+- `connected`: â‰¤10 segundos desde Ãºltima actualizaciÃ³n
+- `stale`: 10-30 segundos desde Ãºltima actualizaciÃ³n
+- `offline`: >30 segundos o sin datos
 
 ## Firmware ESP32 (Wokwi)
-1. Copia `firmware/config.h.example` a `config.h` dentro de tu sketch y coloca SSID, contraseña y URL del backend (`API_BASE_URL`).
-2. Asegúrate de usar `POST_INTERVAL_SECONDS` similar a `STATUS_REFRESH_SECONDS` para que la UI y el firmware estén sincronizados.
-3. En Wokwi, usa `host.docker.internal` (o tu IP local) como base para llegar al servidor Flask en tu máquina.
-4. Observa la consola serial: cada POST debería responder con `200 OK`. El panel web debe reflejar los valores y marcar la conexión como activa.
+1. Copia `firmware/config.h.example` a `config.h` dentro de tu sketch y coloca SSID, contraseï¿½a y URL del backend (`API_BASE_URL`).
+2. Asegï¿½rate de usar `POST_INTERVAL_SECONDS` similar a `STATUS_REFRESH_SECONDS` para que la UI y el firmware estï¿½n sincronizados.
+3. En Wokwi, usa `host.docker.internal` (o tu IP local) como base para llegar al servidor Flask en tu mï¿½quina.
+4. Observa la consola serial: cada POST deberï¿½a responder con `200 OK`. El panel web debe reflejar los valores y marcar la conexiï¿½n como activa.
 
 ## Capturas y evidencia
 - `docs/screenshots/dashboard-after.png`: placeholder del panel actualizado. Sustituye por una captura real tras probarlo.
-- `docs/screenshots/connection-flow.gif`: placeholder de la secuencia de conexión. Actualiza con un GIF corto si grabas la prueba.
+- `docs/screenshots/connection-flow.gif`: placeholder de la secuencia de conexiï¿½n. Actualiza con un GIF corto si grabas la prueba.
 
-## Solución de problemas
+## Soluciï¿½n de problemas
 - **Badge en rojo**: revisa credenciales Wi-Fi en `config.h` y que `API_BASE_URL` apunte al servidor correcto.
-- **"Sin datos" permanente**: el backend aún no recibió POSTs. Usa el comando curl de prueba.
-- **Wokwi sin acceso**: abre el puerto en tu firewall o usa la IP LAN si estás en hardware real.
+- **"Sin datos" permanente**: el backend aï¿½n no recibiï¿½ POSTs. Usa el comando curl de prueba.
+- **Wokwi sin acceso**: abre el puerto en tu firewall o usa la IP LAN si estï¿½s en hardware real.
 
 ## Historial de cambios
-Consulta `CHANGELOG.md` para ver qué se modificó y por qué.
+Consulta `CHANGELOG.md` para ver quï¿½ se modificï¿½ y por quï¿½.
