@@ -487,3 +487,5 @@ Este proyecto es de código abierto para fines educativos.
 ## 📝 Historial de cambios
 
 Consulta `CHANGELOG.md` para ver todas las actualizaciones del proyecto.
+#   I O T _ 1 1 1 4  
+ 
