@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Lectura de Sensor IoT</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 30px; }
+    .box { margin: 12px 0; font-size: 1.3rem; }
+  </style>
+</head>
+<body>
+  <h1>Lectura de Sensor IoT</h1>
+
+  <div class="box">🌡️ Temperatura: <span id="temp">--</span></div>
+  <div class="box">💧 Humedad: <span id="hum">--</span></div>
+  <div class="box"><small>Última actualización: <span id="last">--</span></small></div>
+
+  <script>
+    // --- CONFIG (usa tu Channel ID y Read API Key)
+    const CHANNEL_ID = 3129681;
+    const READ_API_KEY = "OZ9RIF3DTOW08W5W";
+
+    async function fetchLast(field) {
+      const url = `https://api.thingspeak.com/channels/${CHANNEL_ID}/fields/${field}/last.json?api_key=${READ_API_KEY}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    async function actualizarDatos() {
+      try {
+        const t = await fetchLast(1); // field1 = temperatura
+        const h = await fetchLast(2); // field2 = humedad
+        document.getElementById('temp').innerText = (t.field1 !== null ? t.field1 : '--') + " °C";
+        document.getElementById('hum').innerText  = (h.field2 !== null ? h.field2 : '--') + " %";
+        // last entry time (si lo provee)
+        document.getElementById('last').innerText = t.created_at || h.created_at || new Date().toLocaleString();
+      } catch (err) {
+        console.error('Error cargando ThingSpeak:', err);
+        document.getElementById('temp').innerText = "error";
+        document.getElementById('hum').innerText = "error";
+      }
+    }
+
+    // Actualiza cada 20 segundos (ThingSpeak actualiza cada ~15s)
+    actualizarDatos();
+    setInterval(actualizarDatos, 20000);
+  </script>
+</body>
+</html>
